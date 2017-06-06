@@ -8,54 +8,54 @@ AMQP binding implementing Client-Server and Publisher-Consumer paradigms
     package main
     
     import (
-    	"fmt"
-    	"bitbucket.org/darplay/domain/rmq"
+        "fmt"
+        "github.com/djumanoff/amqp"
     )
     
-    var cfg = rmq.Config{
-    	Host: "localhost",
-    	VirtualHost: "",
-    	User: "admin",
-    	Password: "admin",
-    	Port: 5672,
-    	LogLevel: 5,
+    var cfg = amqp.Config{
+        Host: "localhost",
+        VirtualHost: "",
+        User: "admin",
+        Password: "admin",
+        Port: 5672,
+        LogLevel: 5,
     }
     
-    var srvCfg = rmq.ServerConfig{
-    	ResponseX: "in.fanout",
-    	RequestX: "request",
+    var srvCfg = amqp.ServerConfig{
+        ResponseX: "in.fanout",
+        RequestX: "request",
     }
     
     func main() {
-    	fmt.Println("Start")
+        fmt.Println("Start")
     
-    	sess := rmq.NewSession(cfg)
+        sess := amqp.NewSession(cfg)
     
-    	if err := sess.Connect(); err != nil {
-    		fmt.Println(err)
-    		return
-    	}
-    	defer sess.Close()
+        if err := sess.Connect(); err != nil {
+            fmt.Println(err)
+            return
+        }
+        defer sess.Close()
     
-    	srv, err := sess.Server(srvCfg)
-    	if err != nil {
-    		fmt.Println(err)
-    		return
-    	}
+        srv, err := sess.Server(srvCfg)
+        if err != nil {
+            fmt.Println(err)
+            return
+        }
     
-    	srv.Endpoint("request.get.test", func(d rmq.Message) *rmq.Message {
-    		fmt.Println("handler called")
-    		return &rmq.Message{
-    			Body: []byte("test"),
-    		}
-    	})
+        srv.Endpoint("request.get.test", func(d amqp.Message) *amqp.Message {
+            fmt.Println("handler called")
+            return &amqp.Message{
+                Body: []byte("test"),
+            }
+        })
     
-    	if err := srv.Start(); err != nil {
-    		fmt.Println(err)
-    		return
-    	}
+        if err := srv.Start(); err != nil {
+            fmt.Println(err)
+            return
+        }
     
-    	fmt.Println("End")
+        fmt.Println("End")
     }
 ```
 
@@ -63,13 +63,13 @@ AMQP binding implementing Client-Server and Publisher-Consumer paradigms
 
 ```Go
     package main
-    
+        
     import (
     	"fmt"
-    	"bitbucket.org/darplay/domain/rmq"
+    	"github.com/djumanoff/amqp"
     )
     
-    var cfg = rmq.Config{
+    var cfg = amqp.Config{
     	Host: "localhost",
     	VirtualHost: "",
     	User: "admin",
@@ -81,7 +81,7 @@ AMQP binding implementing Client-Server and Publisher-Consumer paradigms
     func main() {
     	fmt.Println("Start")
     
-    	sess := rmq.NewSession(cfg)
+    	sess := amqp.NewSession(cfg)
     
     	if err := sess.Connect(); err != nil {
     		fmt.Println(err)
@@ -89,7 +89,7 @@ AMQP binding implementing Client-Server and Publisher-Consumer paradigms
     	}
     	defer sess.Close()
     
-    	var cltCfg = rmq.ClientConfig{
+    	var cltCfg = amqp.ClientConfig{
     		ResponseX: "response",
     		RequestX: "in.fanout",
     	}
@@ -100,16 +100,15 @@ AMQP binding implementing Client-Server and Publisher-Consumer paradigms
     		return
     	}
     
-    	reply, err := clt.Call("request.get.test", rmq.Message{
+    	reply, err := clt.Call("request.get.test", amqp.Message{
     		Body: []byte("ping 1"),
     	})
-    
     	if err != nil {
     		fmt.Println(err)
     		return
     	}
-   
-        fmt.Println(reply)
+    
+    	fmt.Println(reply)
     	fmt.Println("End")
     
     	ch := make(chan bool)
