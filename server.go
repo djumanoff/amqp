@@ -1,0 +1,322 @@
+package amqp
+
+import (
+	"github.com/streadway/amqp"
+	"time"
+)
+
+//const (
+//	reqX = "request"
+//)
+
+type (
+	Process interface {
+		Start() error
+		Stop() error
+	}
+
+	Server interface {
+		Process
+		Endpoint(endpoint string, handler Handler) error
+	}
+
+	Consumer interface {
+		Process
+		Queue(Queue) error
+	}
+
+	ServerConfig struct {
+		RequestX string
+		ResponseX string
+	}
+
+	server struct {
+		sess *Session
+
+		requestX string
+		responseX string
+
+		qs []Queue
+		xs []Exchange
+
+		close chan bool
+	}
+)
+
+func (srv *server) Stop() error {
+	srv.close <- true
+	return nil
+}
+
+func (srv *server) Start() error {
+	//if err := srv.initRpcExchanges(); err != nil {
+	//	return err
+	//}
+
+	<-srv.close
+	srv.cleanup()
+
+	return nil
+}
+
+//func (srv *server) initRpcExchanges() error {
+	//if srv.requestX != "" {
+	//	if err := srv.Exchange(Exchange{
+	//		Name: srv.requestX,
+	//		Kind: "fanout",
+	//		AutoDelete: false,
+	//		Durable: true,
+	//		Internal: false,
+	//		NoWait: true,
+	//		Args: nil,
+	//	}); err != nil {
+	//		srv.sess.log.Warn("InitExchange", err)
+	//		return err
+	//	}
+	//}
+
+	//if srv.responseX != "" {
+	//	if err := srv.Exchange(Exchange{
+	//		Name: srv.responseX,
+	//		Kind: "fanout",
+	//		AutoDelete: false,
+	//		Durable: true,
+	//		Internal: false,
+	//		NoWait: true,
+	//		Args: nil,
+	//	}); err != nil {
+	//		srv.sess.log.Warn("InitExchange", err)
+	//		return err
+	//	}
+	//}
+
+	//return nil
+//}
+
+func (srv *server) Exchange(x Exchange) error {
+	if !x.Passive {
+		if err := srv.sess.sen.ExchangeDeclare(
+			x.Name,
+			x.Kind,
+			x.Durable,
+			x.AutoDelete,
+			x.Internal,
+			x.NoWait,
+			x.Args,
+		); err != nil {
+			srv.sess.log.Warn("ExchangeDeclare", err, x)
+			return err
+		}
+	} else {
+		if err := srv.sess.sen.ExchangeDeclarePassive(
+			x.Name,
+			x.Kind,
+			x.Durable,
+			x.AutoDelete,
+			x.Internal,
+			x.NoWait,
+			x.Args,
+		); err != nil {
+			srv.sess.log.Warn("ExchangeDeclarePassive", err, x)
+			return err
+		}
+	}
+
+	for _, b := range x.Bindings {
+		err := srv.sess.sen.ExchangeBind(
+			b.Destination,
+			b.RoutingKey,
+			b.Source,
+			b.NoWait,
+			b.Args,
+		)
+		if err != nil {
+			srv.sess.log.Warn("ExchangeBind", err, b)
+			return err
+		}
+	}
+
+	srv.xs = append(srv.xs, x)
+
+	return nil
+}
+
+func (srv *server) initExchanges(xs []Exchange) (error) {
+	for _, x := range xs {
+		srv.Exchange(x)
+	}
+
+	return nil
+}
+
+func (srv *server) Queue(q Queue) error {
+	if !q.Passive {
+		queue, err := srv.sess.rec.QueueDeclare(
+			q.Name,
+			q.Durable,
+			q.AutoDelete,
+			q.Exclusive,
+			q.NoWait,
+			q.Args,
+		)
+		if err != nil {
+			srv.sess.log.Warn("QueueDeclare", err, q)
+			return err
+		}
+		q.Name = queue.Name
+		q.q = &queue
+	} else {
+		queue, err :=srv.sess.rec.QueueDeclarePassive(
+			q.Name,
+			q.Durable,
+			q.AutoDelete,
+			q.Exclusive,
+			q.NoWait,
+			q.Args,
+		)
+		if err != nil {
+			srv.sess.log.Warn("QueueDeclarePassive", err, q)
+			return err
+		}
+		q.Name = queue.Name
+		q.q = &queue
+	}
+
+	for _, b := range q.Bindings {
+		err := srv.sess.rec.QueueBind(
+			q.Name,
+			b.RoutingKey,
+			b.Exchange,
+			b.NoWait,
+			b.Args,
+		)
+		if err != nil {
+			srv.sess.log.Warn("QueueBind", err, b)
+			return err
+		}
+
+		msgs, err := srv.sess.rec.Consume(
+			q.Name,
+			q.ConsumerTag,
+			true,
+			q.Exclusive,
+			false,
+			q.NoWait,
+			q.Args,
+		)
+		if err != nil {
+			srv.sess.log.Warn("QueueBind", err)
+			return err
+		}
+
+		go func(ch <-chan amqp.Delivery) {
+			for d := range ch {
+				m := deliveryToMessage(d)
+				srv.sess.log.Debug(" <- ", m)
+
+				msg := b.Handler(m)
+				if msg == nil {
+					continue
+				}
+
+				msg.ReplyTo = d.ReplyTo
+				msg.CorrelationId = d.CorrelationId
+				msg.AppId = d.AppId
+				msg.Timestamp = time.Now()
+
+				srv.sess.log.Debug(" -> ", msg)
+
+				if err := srv.sess.sen.Publish(
+					srv.responseX,
+					msg.ReplyTo,
+					msg.Mandatory,
+					msg.Immediate,
+					msg.publishing(),
+				); err != nil {
+					srv.sess.log.Warn(err)
+				}
+			}
+		}(msgs)
+	}
+
+	srv.qs = append(srv.qs, q)
+
+	return nil
+}
+
+func (srv *server) Endpoint(endpoint string, handler Handler) error {
+	q := Queue{
+		Name: endpoint,
+		Durable: true,
+		AutoDelete: true,
+		Exclusive: false,
+		NoWait: true,
+		Args: nil,
+		Bindings: []QueueBinding{
+			{
+				Name: endpoint,
+				Exchange: srv.requestX,
+				RoutingKey: endpoint,
+				NoWait: true,
+				Args: nil,
+				Handler: handler,
+			},
+		},
+	}
+
+	if err := srv.Queue(q); err != nil {
+		srv.sess.log.Warn("Endpoint", err)
+		return err
+	}
+
+	return nil
+}
+
+func (srv *server) cleanup() error {
+	if err := srv.cleanupRec(); err != nil {
+		return err
+	}
+
+	if err := srv.cleanupSen(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (srv *server) cleanupSen() error {
+	for _, x := range srv.xs {
+		for _, b := range x.Bindings {
+			if err := srv.sess.sen.ExchangeUnbind(
+				b.Destination,
+				b.RoutingKey,
+				b.Source,
+				b.NoWait,
+				b.Args,
+			); err != nil {
+				srv.sess.log.Warn("ExchangeUnbind", err, b)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (srv *server) cleanupRec() error {
+	for _, q := range srv.qs {
+		for _, b := range q.Bindings {
+			if err := srv.sess.rec.QueueUnbind(
+				q.Name,
+				b.RoutingKey,
+				b.Exchange,
+				b.Args,
+			); err != nil {
+				srv.sess.log.Warn("QueueUnbind", err, b)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
