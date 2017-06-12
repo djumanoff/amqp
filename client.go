@@ -5,10 +5,6 @@ import (
 	"github.com/streadway/amqp"
 )
 
-//const (
-//	resX = "response"
-//)
-
 type (
 	Client interface {
 		Call(endpoint string, message Message) (*Message, error)
@@ -21,6 +17,7 @@ type (
 	ClientConfig struct {
 		RequestX string
 		ResponseX string
+		ResponseQ string
 	}
 
 	client struct {
@@ -43,7 +40,7 @@ func (clt *client) run() error {
 		false,
 		true,
 		false,
-		true,
+		false,
 		nil,
 	);
 	if err != nil {
@@ -54,7 +51,7 @@ func (clt *client) run() error {
 		queue.Name,
 		queue.Name,
 		clt.responseX,
-		true,
+		false,
 		nil,
 	); err != nil {
 		clt.sess.log.Warn("QueueBind", err)
@@ -64,9 +61,9 @@ func (clt *client) run() error {
 	msgs, err := clt.sess.rec.Consume(
 		queue.Name,
 		"",
-		true,
-		true,
-		true,
+		false,
+		false,
+		false,
 		false,
 		nil,
 	)
@@ -96,7 +93,8 @@ func (clt *client) stop() {
 }
 
 func (clt *client) Publish(message Message) error {
-	clt.sess.log.Debug("req", message)
+	message.Timestamp = time.Now()
+	clt.sess.log.Debug(" -> ", message)
 	return clt.sess.sen.Publish(
 		message.Exchange,
 		message.RoutingKey,
@@ -117,9 +115,10 @@ func (clt *client) Call(endpoint string, message Message) (*Message, error) {
 	message.RoutingKey = endpoint
 	message.CorrelationId = correlationId
 	message.ReplyTo = clt.responseQ
-	message.Timestamp = time.Now()
 	message.MessageId = correlationId
 	message.ContentType = "application/json"
+	message.Mandatory = false
+	message.Immediate = false
 
 	if err := clt.Publish(message); err != nil {
 		return nil, err
@@ -127,7 +126,7 @@ func (clt *client) Call(endpoint string, message Message) (*Message, error) {
 
 	select {
 	case reply := <-replyCh:
-		clt.sess.log.Debug("res", reply)
+		clt.sess.log.Debug(" <- ", reply)
 		return &reply, nil
 	case <-time.After(10 * time.Second):
 		return nil, ErrRpcTimeout

@@ -37,11 +37,11 @@ type (
 		Exchange    string `json:"exchange,omitempty" bson:"exchange,omitempty"` // basic.publish exhange
 		RoutingKey  string `json:"routingKey,omitempty" bson:"routingKey,omitempty"` // basic.publish routing key
 
-		Body []byte `json:"body,omitempty" bson:"body,omitempty"`
+		Body []byte `json:"-" bson:"-"`
 		Mandatory bool `json:"mandatory,omitempty" bson:"mandatory,omitempty"`
 		Immediate bool `json:"immediate,omitempty" bson:"immediate,omitempty"`
 
-		BodyString string `json:"bodyString,omitempty" bson:"bodyString,omitempty"`
+		Data interface{} `json:"data,omitempty" bson:"data,omitempty"`
 	}
 
 	Handler func(Message) *Message
@@ -52,13 +52,19 @@ type (
 )
 
 func (m Message) String() string {
-	m.BodyString = string(m.Body)
-	m.Body = nil
+	//m.BodyString = string(m.Body)
+	//m.Body = nil
+
+	err := json.Unmarshal(m.Body, &m.Data)
+	if err != nil {
+		return ""
+	}
 
 	data, err := json.Marshal(m)
 	if err != nil {
 		return ""
 	}
+
 	return string(data)
 }
 

@@ -113,6 +113,13 @@ func (sess *Session) Server(cfg ServerConfig) (Server, error) {
 	return srv, nil
 }
 
+func (sess *Session) Publisher() (Publisher, error) {
+	clt := &client{
+		sess: sess,
+	}
+	return clt, nil
+}
+
 func (sess *Session) Client(cfg ClientConfig) (Client, error) {
 	hostname := os.Getenv("HOSTNAME")
 	if hostname == "" {
@@ -120,11 +127,16 @@ func (sess *Session) Client(cfg ClientConfig) (Client, error) {
 	}
 	correlationId := correlationId(32)
 
+	responseQ := cfg.ResponseQ
+	if responseQ == "" {
+		responseQ = cfg.ResponseX + "." + hostname + "." + correlationId
+	}
+
 	clt := &client{
 		sess: sess,
 		responseX: cfg.ResponseX, // "in.fanout",
 		requestX: cfg.RequestX, // "in.fanout",
-		responseQ: cfg.ResponseX + "." + hostname + "." + correlationId,
+		responseQ: responseQ,
 		rpcChannels: map[string]chan Message{},
 		close: make(chan bool),
 	}
