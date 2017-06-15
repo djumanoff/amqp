@@ -3,7 +3,6 @@ package amqp
 import (
 	"github.com/streadway/amqp"
 	"time"
-	"encoding/json"
 )
 
 type (
@@ -54,18 +53,17 @@ type (
 func (m Message) String() string {
 	//m.BodyString = string(m.Body)
 	//m.Body = nil
+	//err := json.Unmarshal(m.Body, &m.Data)
+	//if err != nil {
+	//	return ""
+	//}
+	//
+	//data, err := json.Marshal(m)
+	//if err != nil {
+	//	return ""
+	//}
 
-	err := json.Unmarshal(m.Body, &m.Data)
-	if err != nil {
-		return ""
-	}
-
-	data, err := json.Marshal(m)
-	if err != nil {
-		return ""
-	}
-
-	return string(data)
+	return string(m.Body)
 }
 
 func (m Message) publishing() amqp.Publishing {

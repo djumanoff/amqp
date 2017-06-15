@@ -5,10 +5,6 @@ import (
 	"time"
 )
 
-//const (
-//	reqX = "request"
-//)
-
 type (
 	Process interface {
 		Start() error
@@ -59,39 +55,39 @@ func (srv *server) Start() error {
 	return nil
 }
 
-//func (srv *server) initRpcExchanges() error {
-	//if srv.requestX != "" {
-	//	if err := srv.Exchange(Exchange{
-	//		Name: srv.requestX,
-	//		Kind: "fanout",
-	//		AutoDelete: false,
-	//		Durable: true,
-	//		Internal: false,
-	//		NoWait: true,
-	//		Args: nil,
-	//	}); err != nil {
-	//		srv.sess.log.Warn("InitExchange", err)
-	//		return err
-	//	}
-	//}
+func (srv *server) InitRpcExchanges() error {
+	if srv.requestX != "" {
+		if err := srv.Exchange(Exchange{
+			Name: srv.requestX,
+			Kind: "direct",
+			AutoDelete: false,
+			Durable: true,
+			Internal: false,
+			NoWait: true,
+			Args: nil,
+		}); err != nil {
+			srv.sess.log.Warn("InitExchange", err)
+			return err
+		}
+	}
 
-	//if srv.responseX != "" {
-	//	if err := srv.Exchange(Exchange{
-	//		Name: srv.responseX,
-	//		Kind: "fanout",
-	//		AutoDelete: false,
-	//		Durable: true,
-	//		Internal: false,
-	//		NoWait: true,
-	//		Args: nil,
-	//	}); err != nil {
-	//		srv.sess.log.Warn("InitExchange", err)
-	//		return err
-	//	}
-	//}
+	if srv.responseX != "" {
+		if err := srv.Exchange(Exchange{
+			Name: srv.responseX,
+			Kind: "direct",
+			AutoDelete: false,
+			Durable: true,
+			Internal: false,
+			NoWait: true,
+			Args: nil,
+		}); err != nil {
+			srv.sess.log.Warn("InitExchange", err)
+			return err
+		}
+	}
 
-	//return nil
-//}
+	return nil
+}
 
 func (srv *server) Exchange(x Exchange) error {
 	if !x.Passive {

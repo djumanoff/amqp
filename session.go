@@ -20,24 +20,24 @@ var (
 	ErrRPCChannelsRequired = errors.New("In order to make RPC calls you need to init receiver and sender")
 )
 
-const (
-	QueueNoWait = false
-	QueueDurable = true
-	QueueAutoDelete = true
-	QueuePassive = false
-
-	QueueBindingNoWait = false
-
-	ExchangeBindingNoWait = false
-
-	ExchangeNoWait = false
-	ExchangeDurable = true
-	ExchangeAutoDelete = true
-	ExchangePassive = false
-
-	PublishingMandatory = false
-	PublishingImmediate = false
-)
+//const (
+//	QueueNoWait = false
+//	QueueDurable = true
+//	QueueAutoDelete = true
+//	QueuePassive = false
+//
+//	QueueBindingNoWait = false
+//
+//	ExchangeBindingNoWait = false
+//
+//	ExchangeNoWait = false
+//	ExchangeDurable = true
+//	ExchangeAutoDelete = true
+//	ExchangePassive = false
+//
+//	PublishingMandatory = false
+//	PublishingImmediate = false
+//)
 
 type (
 	Config struct {
@@ -102,8 +102,8 @@ func (sess *Session) Consumer() (Consumer, error) {
 func (sess *Session) Server(cfg ServerConfig) (Server, error) {
 	srv := &server{
 		sess: sess,
-		responseX: cfg.ResponseX, // "in.fanout", // "response"
-		requestX: cfg.RequestX, // "in.fanout", // request
+		responseX: cfg.ResponseX,
+		requestX: cfg.RequestX,
 		qs: []Queue{},
 		xs: []Exchange{},
 		close: make(chan bool),
@@ -134,8 +134,8 @@ func (sess *Session) Client(cfg ClientConfig) (Client, error) {
 
 	clt := &client{
 		sess: sess,
-		responseX: cfg.ResponseX, // "in.fanout",
-		requestX: cfg.RequestX, // "in.fanout",
+		responseX: cfg.ResponseX,
+		requestX: cfg.RequestX,
 		responseQ: responseQ,
 		rpcChannels: map[string]chan Message{},
 		close: make(chan bool),
