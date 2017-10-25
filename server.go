@@ -194,7 +194,7 @@ func (srv *server) Queue(q Queue) error {
 		msgs, err := srv.sess.rec.Consume(
 			q.Name,
 			q.ConsumerTag,
-			true,
+			q.AutoAck,
 			q.Exclusive,
 			false,
 			q.NoWait,
