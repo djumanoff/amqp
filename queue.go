@@ -7,6 +7,7 @@ type (
 		Name string
 		Durable bool
 		AutoDelete bool
+		AutoAck bool
 		Exclusive bool
 		NoWait bool
 		Args amqp.Table
