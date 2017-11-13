@@ -61,7 +61,7 @@ func (clt *client) run() error {
 	msgs, err := clt.sess.rec.Consume(
 		queue.Name,
 		"",
-		false,
+		true,
 		false,
 		false,
 		false,
