@@ -45,6 +45,36 @@ func (srv *server) Stop() error {
 }
 
 func (srv *server) Start() error {
+	if srv.requestX == defaultReqX {
+		if err := srv.Exchange(Exchange{
+			Name: srv.requestX,
+			Kind: "direct",
+			AutoDelete: false,
+			Durable: true,
+			Internal: false,
+			NoWait: true,
+			Args: nil,
+		}); err != nil {
+			srv.sess.log.Warn("InitExchange", err)
+			return err
+		}
+	}
+
+	if srv.responseX == defaultResX {
+		if err := srv.Exchange(Exchange{
+			Name: srv.responseX,
+			Kind: "direct",
+			AutoDelete: false,
+			Durable: true,
+			Internal: false,
+			NoWait: true,
+			Args: nil,
+		}); err != nil {
+			srv.sess.log.Warn("InitExchange", err)
+			return err
+		}
+	}
+
 	//if err := srv.initRpcExchanges(); err != nil {
 	//	return err
 	//}

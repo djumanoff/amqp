@@ -22,8 +22,8 @@ AMQP binding implementing Client-Server and Publisher-Consumer paradigms
     }
     
     var srvCfg = amqp.ServerConfig{
-        ResponseX: "in.fanout",
-        RequestX: "request",
+        //ResponseX: "response",
+        //RequestX: "request",
     }
     
     func main() {
@@ -90,8 +90,8 @@ AMQP binding implementing Client-Server and Publisher-Consumer paradigms
     	defer sess.Close()
     
     	var cltCfg = amqp.ClientConfig{
-    		ResponseX: "response",
-    		RequestX: "in.fanout",
+    		//ResponseX: "response",
+    		//RequestX: "request",
     	}
     
     	clt, err := sess.Client(cltCfg)
@@ -110,9 +110,5 @@ AMQP binding implementing Client-Server and Publisher-Consumer paradigms
     
     	fmt.Println(reply)
     	fmt.Println("End")
-    
-    	ch := make(chan bool)
-    
-    	<-ch
     }
 ```

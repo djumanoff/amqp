@@ -2,20 +2,24 @@ package amqp
 
 import (
 	"time"
+
 	"github.com/streadway/amqp"
 )
 
 type (
+	// Client interface which has Call method
 	Client interface {
 		Call(endpoint string, message Message) (*Message, error)
 	}
 
+	// Publisher interface which has Publish method
 	Publisher interface {
 		Publish(message Message) error
 	}
 
+	// ClientConfig struct
 	ClientConfig struct {
-		RequestX string
+		RequestX  string
 		ResponseX string
 		ResponseQ string
 	}
@@ -23,7 +27,7 @@ type (
 	client struct {
 		sess *Session
 
-		requestX string
+		requestX  string
 		responseX string
 
 		responseQ string
@@ -42,7 +46,7 @@ func (clt *client) run() error {
 		false,
 		false,
 		nil,
-	);
+	)
 	if err != nil {
 		clt.sess.log.Warn("QueueDeclare", err)
 		return err

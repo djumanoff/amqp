@@ -20,7 +20,10 @@ var (
 	ErrRPCChannelsRequired = errors.New("In order to make RPC calls you need to init receiver and sender")
 )
 
-//const (
+const (
+	defaultReqX = "request"
+	defaultResX = "request"
+
 //	QueueNoWait = false
 //	QueueDurable = true
 //	QueueAutoDelete = true
@@ -37,7 +40,7 @@ var (
 //
 //	PublishingMandatory = false
 //	PublishingImmediate = false
-//)
+)
 
 type (
 	Config struct {
@@ -100,6 +103,14 @@ func (sess *Session) Consumer() (Consumer, error) {
 }
 
 func (sess *Session) Server(cfg ServerConfig) (Server, error) {
+	if cfg.RequestX == "" {
+		cfg.RequestX = defaultReqX
+	}
+
+	if cfg.ResponseX == "" {
+		cfg.ResponseX = defaultResX
+	}
+
 	srv := &server{
 		sess: sess,
 		responseX: cfg.ResponseX,
@@ -130,6 +141,14 @@ func (sess *Session) Client(cfg ClientConfig) (Client, error) {
 	responseQ := cfg.ResponseQ
 	if responseQ == "" {
 		responseQ = cfg.ResponseX + "." + hostname + "." + correlationId
+	}
+
+	if cfg.RequestX == "" {
+		cfg.RequestX = defaultReqX
+	}
+
+	if cfg.ResponseX == "" {
+		cfg.ResponseX = defaultResX
 	}
 
 	clt := &client{
