@@ -29,6 +29,10 @@ type (
 	server struct {
 		sess *Session
 
+		rec *amqp.Channel
+
+		sen *amqp.Channel
+
 		requestX string
 		responseX string
 
@@ -121,7 +125,7 @@ func (srv *server) InitRpcExchanges() error {
 
 func (srv *server) Exchange(x Exchange) error {
 	if !x.Passive {
-		if err := srv.sess.sen.ExchangeDeclare(
+		if err := srv.sen.ExchangeDeclare(
 			x.Name,
 			x.Kind,
 			x.Durable,
@@ -134,7 +138,7 @@ func (srv *server) Exchange(x Exchange) error {
 			return err
 		}
 	} else {
-		if err := srv.sess.sen.ExchangeDeclarePassive(
+		if err := srv.sen.ExchangeDeclarePassive(
 			x.Name,
 			x.Kind,
 			x.Durable,
@@ -149,7 +153,7 @@ func (srv *server) Exchange(x Exchange) error {
 	}
 
 	for _, b := range x.Bindings {
-		err := srv.sess.sen.ExchangeBind(
+		err := srv.sen.ExchangeBind(
 			b.Destination,
 			b.RoutingKey,
 			b.Source,
@@ -177,7 +181,7 @@ func (srv *server) initExchanges(xs []Exchange) (error) {
 
 func (srv *server) Queue(q Queue) error {
 	if !q.Passive {
-		queue, err := srv.sess.rec.QueueDeclare(
+		queue, err := srv.rec.QueueDeclare(
 			q.Name,
 			q.Durable,
 			q.AutoDelete,
@@ -192,7 +196,7 @@ func (srv *server) Queue(q Queue) error {
 		q.Name = queue.Name
 		q.q = &queue
 	} else {
-		queue, err :=srv.sess.rec.QueueDeclarePassive(
+		queue, err :=srv.rec.QueueDeclarePassive(
 			q.Name,
 			q.Durable,
 			q.AutoDelete,
@@ -209,7 +213,7 @@ func (srv *server) Queue(q Queue) error {
 	}
 
 	for _, b := range q.Bindings {
-		err := srv.sess.rec.QueueBind(
+		err := srv.rec.QueueBind(
 			q.Name,
 			b.RoutingKey,
 			b.Exchange,
@@ -221,7 +225,7 @@ func (srv *server) Queue(q Queue) error {
 			return err
 		}
 
-		msgs, err := srv.sess.rec.Consume(
+		msgs, err := srv.rec.Consume(
 			q.Name,
 			q.ConsumerTag,
 			q.AutoAck,
@@ -252,7 +256,7 @@ func (srv *server) Queue(q Queue) error {
 
 				srv.sess.log.Debug(" -> ", msg)
 
-				if err := srv.sess.sen.Publish(
+				if err := srv.sen.Publish(
 					srv.responseX,
 					msg.ReplyTo,
 					msg.Mandatory,
@@ -313,7 +317,7 @@ func (srv *server) cleanup() error {
 func (srv *server) cleanupSen() error {
 	for _, x := range srv.xs {
 		for _, b := range x.Bindings {
-			if err := srv.sess.sen.ExchangeUnbind(
+			if err := srv.sen.ExchangeUnbind(
 				b.Destination,
 				b.RoutingKey,
 				b.Source,
@@ -332,7 +336,7 @@ func (srv *server) cleanupSen() error {
 func (srv *server) cleanupRec() error {
 	for _, q := range srv.qs {
 		for _, b := range q.Bindings {
-			if err := srv.sess.rec.QueueUnbind(
+			if err := srv.rec.QueueUnbind(
 				q.Name,
 				b.RoutingKey,
 				b.Exchange,

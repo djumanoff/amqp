@@ -27,6 +27,10 @@ type (
 	client struct {
 		sess *Session
 
+		rec *amqp.Channel
+
+		sen *amqp.Channel
+
 		requestX  string
 		responseX string
 
@@ -39,7 +43,7 @@ type (
 )
 
 func (clt *client) run() error {
-	queue, err := clt.sess.rec.QueueDeclare(
+	queue, err := clt.rec.QueueDeclare(
 		clt.responseQ,
 		false,
 		true,
@@ -51,7 +55,7 @@ func (clt *client) run() error {
 		clt.sess.log.Warn("QueueDeclare", err)
 		return err
 	}
-	if err := clt.sess.rec.QueueBind(
+	if err := clt.rec.QueueBind(
 		queue.Name,
 		queue.Name,
 		clt.responseX,
@@ -62,7 +66,7 @@ func (clt *client) run() error {
 		return err
 	}
 
-	msgs, err := clt.sess.rec.Consume(
+	msgs, err := clt.rec.Consume(
 		queue.Name,
 		"",
 		true,
@@ -99,7 +103,7 @@ func (clt *client) stop() {
 func (clt *client) Publish(message Message) error {
 	message.Timestamp = time.Now()
 	clt.sess.log.Debug(" -> ", message)
-	return clt.sess.sen.Publish(
+	return clt.sen.Publish(
 		message.Exchange,
 		message.RoutingKey,
 		message.Mandatory,
@@ -150,7 +154,7 @@ func (clt *client) closeReplyChannel(chName string) {
 func (clt *client) cleanup() error {
 	clt.sess.log.Info("queue cleanup")
 
-	if err := clt.sess.rec.QueueUnbind(
+	if err := clt.rec.QueueUnbind(
 		clt.responseQ,
 		clt.responseQ,
 		clt.responseX,

@@ -7,7 +7,7 @@ import (
 	"time"
 	"github.com/streadway/amqp"
 	"os"
-	"os/signal"
+	//"os/signal"
 	"errors"
 	"math/rand"
 	"github.com/Sirupsen/logrus"
@@ -56,8 +56,8 @@ type (
 	Session struct {
 		conn *amqp.Connection
 
-		rec *amqp.Channel
-		sen *amqp.Channel
+		//rec *amqp.Channel
+		//sen *amqp.Channel
 
 		servers []*server
 		clients []*client
@@ -91,11 +91,22 @@ func NewSession(cfg Config) *Session {
 }
 
 func (sess *Session) Consumer() (Consumer, error) {
+	rec, err := sess.conn.Channel()
+	if err != nil {
+		return nil, err
+	}
+
 	srv := &server{
 		sess: sess,
 		qs: []Queue{},
 		close: make(chan bool),
+		rec: rec,
 	}
+
+	go func() {
+		sess.log.Fatal("rec channel is closing", <-rec.NotifyClose(make(chan *amqp.Error)))
+		srv.Stop()
+	}()
 
 	sess.servers = append(sess.servers, srv)
 
@@ -111,6 +122,16 @@ func (sess *Session) Server(cfg ServerConfig) (Server, error) {
 		cfg.ResponseX = defaultResX
 	}
 
+	rec, err := sess.conn.Channel()
+	if err != nil {
+		return nil, err
+	}
+
+	sen, err := sess.conn.Channel()
+	if err != nil {
+		return nil, err
+	}
+
 	srv := &server{
 		sess: sess,
 		responseX: cfg.ResponseX,
@@ -118,16 +139,44 @@ func (sess *Session) Server(cfg ServerConfig) (Server, error) {
 		qs: []Queue{},
 		xs: []Exchange{},
 		close: make(chan bool),
+		sen: sen,
+		rec: rec,
 	}
+
+	go func() {
+		sess.log.Fatal("sen channel is closing", <-sen.NotifyClose(make(chan *amqp.Error)))
+		rec.Close()
+		srv.Stop()
+	}()
+
+	go func() {
+		sess.log.Fatal("rec channel is closing", <-rec.NotifyClose(make(chan *amqp.Error)))
+		sen.Close()
+		srv.Stop()
+	}()
+
 	sess.servers = append(sess.servers, srv)
 
 	return srv, nil
 }
 
 func (sess *Session) Publisher() (Publisher, error) {
+	sen, err := sess.conn.Channel()
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		sess.log.Fatal("sen channel is closing", <-sen.NotifyClose(make(chan *amqp.Error)))
+	}()
+
 	clt := &client{
 		sess: sess,
+		sen: sen,
 	}
+
+	sess.clients = append(sess.clients, clt)
+
 	return clt, nil
 }
 
@@ -160,6 +209,30 @@ func (sess *Session) Client(cfg ClientConfig) (Client, error) {
 		close: make(chan bool),
 	}
 
+	sen, err := sess.conn.Channel()
+	if err != nil {
+		return nil, err
+	}
+	clt.sen = sen
+
+	rec, err := sess.conn.Channel()
+	if err != nil {
+		return nil, err
+	}
+	clt.rec = rec
+
+	go func() {
+		sess.log.Fatal("sen channel is closing", <-sen.NotifyClose(make(chan *amqp.Error)))
+		rec.Close()
+		clt.stop()
+	}()
+
+	go func() {
+		sess.log.Fatal("rec channel is closing", <-rec.NotifyClose(make(chan *amqp.Error)))
+		sen.Close()
+		clt.stop()
+	}()
+
 	clt.run()
 	sess.clients = append(sess.clients, clt)
 
@@ -183,32 +256,32 @@ func (sess *Session) Connect() (err error) {
 		sess.Close()
 	}()
 
-	if err := sess.initSender(); err != nil {
-		sess.log.Warn("InitSender", err)
-		return err
-	}
+	//if err := sess.initSender(); err != nil {
+	//	sess.log.Warn("InitSender", err)
+	//	return err
+	//}
 
-	if err := sess.initReceiver(); err != nil {
-		sess.log.Warn("InitReceiver", err)
-		return err
-	}
+	//if err := sess.initReceiver(); err != nil {
+	//	sess.log.Warn("InitReceiver", err)
+	//	return err
+	//}
 
-	var c chan os.Signal = make(chan os.Signal)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		<-c
-		sess.Close()
-		os.Exit(0)
-	}()
+	//var c chan os.Signal = make(chan os.Signal)
+	//signal.Notify(c, os.Interrupt)
+	//go func() {
+	//	<-c
+	//	sess.Close()
+	//	os.Exit(0)
+	//}()
 
 	return nil
 }
 
 func (sess *Session) Close() {
-	sess.conn.Close()
-
-	sess.closeServers()
 	sess.closeClients()
+	sess.closeServers()
+
+	sess.conn.Close()
 }
 
 func (sess *Session) closeServers() {
@@ -223,31 +296,31 @@ func (sess *Session) closeClients() {
 	}
 }
 
-func (sess *Session) initSender() (err error) {
-	sess.sen, err = sess.conn.Channel()
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		sess.log.Fatal("sen channel is closing", <-sess.sen.NotifyClose(make(chan *amqp.Error)))
-		sess.Close()
-	}()
-
-	return nil
-}
-
-func (sess *Session) initReceiver() (err error) {
-	sess.rec, err = sess.conn.Channel()
-	if err != nil {
-		sess.log.Warn("Channel", err)
-		return err
-	}
-
-	go func() {
-		sess.log.Fatal("rec channel is closing", <-sess.rec.NotifyClose(make(chan *amqp.Error)))
-		sess.Close()
-	}()
-
-	return nil
-}
+//func (sess *Session) initSender() (err error) {
+//	sess.sen, err = sess.conn.Channel()
+//	if err != nil {
+//		return err
+//	}
+//
+//	go func() {
+//		sess.log.Fatal("sen channel is closing", <-sess.sen.NotifyClose(make(chan *amqp.Error)))
+//		sess.Close()
+//	}()
+//
+//	return nil
+//}
+//
+//func (sess *Session) initReceiver() (err error) {
+//	sess.rec, err = sess.conn.Channel()
+//	if err != nil {
+//		sess.log.Warn("Channel", err)
+//		return err
+//	}
+//
+//	go func() {
+//		sess.log.Fatal("rec channel is closing", <-sess.rec.NotifyClose(make(chan *amqp.Error)))
+//		sess.Close()
+//	}()
+//
+//	return nil
+//}
