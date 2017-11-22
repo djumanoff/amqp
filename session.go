@@ -245,7 +245,7 @@ func (sess *Session) initReceiver() (err error) {
 	}
 
 	go func() {
-		sess.log.Fatal("rec channel is closing", <-sess.sen.NotifyClose(make(chan *amqp.Error)))
+		sess.log.Fatal("rec channel is closing", <-sess.rec.NotifyClose(make(chan *amqp.Error)))
 		sess.Close()
 	}()
 

@@ -1,6 +1,8 @@
 package amqp
 
-import "github.com/streadway/amqp"
+import (
+	"github.com/streadway/amqp"
+)
 
 type (
 	Queue struct {
