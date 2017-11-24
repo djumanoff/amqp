@@ -6,10 +6,12 @@ import (
 )
 
 type (
+	Table amqp.Table
+
 	Message struct {
 		Acknowledger amqp.Acknowledger `json:"-" bson:"-"` // the channel from which this delivery arrived
 
-		Headers amqp.Table `json:"headers,omitempty" bson:"headers,omitempty"` // Application or header exchange table
+		Headers Table `json:"headers,omitempty" bson:"headers,omitempty"` // Application or header exchange table
 
 					       // Properties
 		ContentType     string `json:"contentType,omitempty" bson:"contentType,omitempty"`    // MIME content type
@@ -68,7 +70,7 @@ func (m Message) String() string {
 
 func (m Message) publishing() amqp.Publishing {
 	return amqp.Publishing{
-		Headers: m.Headers,
+		Headers: amqp.Table(m.Headers),
 		ContentType: m.ContentType,
 		ContentEncoding: m.ContentEncoding,
 		DeliveryMode: m.DeliveryMode,
@@ -88,7 +90,7 @@ func (m Message) publishing() amqp.Publishing {
 func (d Message) delivery() amqp.Delivery {
 	return amqp.Delivery{
 		Acknowledger: d.Acknowledger,
-		Headers: d.Headers,
+		Headers: amqp.Table(d.Headers),
 		ContentType: d.ContentType,
 		ContentEncoding: d.ContentEncoding,
 		DeliveryMode: d.DeliveryMode,
@@ -113,7 +115,7 @@ func (d Message) delivery() amqp.Delivery {
 
 func publishingToMessage(d amqp.Publishing) Message {
 	return Message{
-		Headers: d.Headers,
+		Headers: Table(d.Headers),
 		ContentType: d.ContentType,
 		ContentEncoding: d.ContentEncoding,
 		DeliveryMode: d.DeliveryMode,
@@ -133,7 +135,7 @@ func publishingToMessage(d amqp.Publishing) Message {
 func deliveryToMessage(d amqp.Delivery) Message {
 	return Message{
 		Acknowledger: d.Acknowledger,
-		Headers: d.Headers,
+		Headers: Table(d.Headers),
 		ContentType: d.ContentType,
 		ContentEncoding: d.ContentEncoding,
 		DeliveryMode: d.DeliveryMode,

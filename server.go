@@ -36,8 +36,8 @@ type (
 		requestX string
 		responseX string
 
-		qs []Queue
-		xs []Exchange
+		qs []*Queue
+		xs []*Exchange
 
 		close chan bool
 	}
@@ -166,7 +166,7 @@ func (srv *server) Exchange(x Exchange) error {
 		}
 	}
 
-	srv.xs = append(srv.xs, x)
+	srv.xs = append(srv.xs, &x)
 
 	return nil
 }
@@ -269,7 +269,7 @@ func (srv *server) Queue(q Queue) error {
 		}(msgs, b)
 	}
 
-	srv.qs = append(srv.qs, q)
+	srv.qs = append(srv.qs, &q)
 
 	return nil
 }
