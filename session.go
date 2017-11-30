@@ -48,6 +48,11 @@ type (
 
 		log *logrus.Logger
 	}
+	ConsumerConfig struct{
+		PrefetchCount int
+		PrefetchSize  int
+		PrefetchGlobal bool
+	}
 )
 
 func NewSession(cfg Config) *Session {
@@ -70,12 +75,13 @@ func NewSession(cfg Config) *Session {
 	}
 }
 
-func (sess *Session) Consumer() (Consumer, error) {
+func (sess *Session) Consumer(consumerCfg ConsumerConfig) (Consumer, error) {
 	rec, err := sess.conn.Channel()
 	if err != nil {
 		return nil, err
 	}
-
+	rec.Qos(consumerCfg.PrefetchCount,consumerCfg.PrefetchSize,consumerCfg.PrefetchGlobal)
+	
 	srv := &server{
 		sess: sess,
 		qs: []*Queue{},
