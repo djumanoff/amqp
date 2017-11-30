@@ -48,10 +48,15 @@ type (
 
 		log *logrus.Logger
 	}
+
 	ConsumerConfig struct{
 		PrefetchCount int
 		PrefetchSize  int
 		PrefetchGlobal bool
+	}
+
+	PublisherConfig struct{
+		// TODO: add publisher config options
 	}
 )
 
@@ -146,7 +151,7 @@ func (sess *Session) Server(cfg ServerConfig) (Server, error) {
 	return srv, nil
 }
 
-func (sess *Session) Publisher() (Publisher, error) {
+func (sess *Session) Publisher(cfg PublisherConfig) (Publisher, error) {
 	sen, err := sess.conn.Channel()
 	if err != nil {
 		return nil, err
