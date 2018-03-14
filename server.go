@@ -1,8 +1,9 @@
 package amqp
 
 import (
-	"github.com/streadway/amqp"
 	"time"
+
+	"github.com/streadway/amqp"
 )
 
 type (
@@ -22,7 +23,7 @@ type (
 	}
 
 	ServerConfig struct {
-		RequestX string
+		RequestX  string
 		ResponseX string
 	}
 
@@ -33,7 +34,7 @@ type (
 
 		sen *amqp.Channel
 
-		requestX string
+		requestX  string
 		responseX string
 
 		qs []*Queue
@@ -51,13 +52,13 @@ func (srv *server) Stop() error {
 func (srv *server) Start() error {
 	if srv.requestX == defaultReqX {
 		if err := srv.Exchange(Exchange{
-			Name: srv.requestX,
-			Kind: "direct",
+			Name:       srv.requestX,
+			Kind:       "direct",
 			AutoDelete: false,
-			Durable: true,
-			Internal: false,
-			NoWait: true,
-			Args: nil,
+			Durable:    true,
+			Internal:   false,
+			NoWait:     true,
+			Args:       nil,
 		}); err != nil {
 			srv.sess.log.Warn("InitExchange", err)
 			return err
@@ -66,13 +67,13 @@ func (srv *server) Start() error {
 
 	if srv.responseX == defaultResX {
 		if err := srv.Exchange(Exchange{
-			Name: srv.responseX,
-			Kind: "direct",
+			Name:       srv.responseX,
+			Kind:       "direct",
 			AutoDelete: false,
-			Durable: true,
-			Internal: false,
-			NoWait: true,
-			Args: nil,
+			Durable:    true,
+			Internal:   false,
+			NoWait:     true,
+			Args:       nil,
 		}); err != nil {
 			srv.sess.log.Warn("InitExchange", err)
 			return err
@@ -92,13 +93,13 @@ func (srv *server) Start() error {
 func (srv *server) InitRpcExchanges() error {
 	if srv.requestX != "" {
 		if err := srv.Exchange(Exchange{
-			Name: srv.requestX,
-			Kind: "direct",
+			Name:       srv.requestX,
+			Kind:       "direct",
 			AutoDelete: false,
-			Durable: true,
-			Internal: false,
-			NoWait: true,
-			Args: nil,
+			Durable:    true,
+			Internal:   false,
+			NoWait:     true,
+			Args:       nil,
 		}); err != nil {
 			srv.sess.log.Warn("InitExchange", err)
 			return err
@@ -107,13 +108,13 @@ func (srv *server) InitRpcExchanges() error {
 
 	if srv.responseX != "" {
 		if err := srv.Exchange(Exchange{
-			Name: srv.responseX,
-			Kind: "direct",
+			Name:       srv.responseX,
+			Kind:       "direct",
 			AutoDelete: false,
-			Durable: true,
-			Internal: false,
-			NoWait: true,
-			Args: nil,
+			Durable:    true,
+			Internal:   false,
+			NoWait:     true,
+			Args:       nil,
 		}); err != nil {
 			srv.sess.log.Warn("InitExchange", err)
 			return err
@@ -171,7 +172,7 @@ func (srv *server) Exchange(x Exchange) error {
 	return nil
 }
 
-func (srv *server) initExchanges(xs []Exchange) (error) {
+func (srv *server) initExchanges(xs []Exchange) error {
 	for _, x := range xs {
 		srv.Exchange(x)
 	}
@@ -196,7 +197,7 @@ func (srv *server) Queue(q Queue) error {
 		q.Name = queue.Name
 		q.q = &queue
 	} else {
-		queue, err :=srv.rec.QueueDeclarePassive(
+		queue, err := srv.rec.QueueDeclarePassive(
 			q.Name,
 			q.Durable,
 			q.AutoDelete,
@@ -276,20 +277,21 @@ func (srv *server) Queue(q Queue) error {
 
 func (srv *server) Endpoint(endpoint string, handler Handler) error {
 	q := Queue{
-		Name: endpoint,
-		Durable: true,
+		Name:       endpoint,
+		Durable:    true,
 		AutoDelete: true,
-		Exclusive: false,
-		NoWait: true,
-		Args: nil,
+		Exclusive:  false,
+		NoWait:     true,
+		Args:       nil,
+		AutoAck:    true,
 		Bindings: []QueueBinding{
 			{
-				Name: endpoint,
-				Exchange: srv.requestX,
+				Name:       endpoint,
+				Exchange:   srv.requestX,
 				RoutingKey: endpoint,
-				NoWait: true,
-				Args: nil,
-				Handler: handler,
+				NoWait:     true,
+				Args:       nil,
+				Handler:    handler,
 			},
 		},
 	}
