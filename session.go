@@ -4,36 +4,38 @@
 package amqp
 
 import (
-	"time"
-	"github.com/streadway/amqp"
 	"os"
+	"time"
+
+	"github.com/streadway/amqp"
 	//"os/signal"
 	"errors"
 	"math/rand"
+
 	"github.com/Sirupsen/logrus"
 )
 
 // Errors
 var (
-	ErrRpcTimeout = errors.New("RPC timeout")
-	ErrUnknown = errors.New("Unknown error")
+	ErrRpcTimeout          = errors.New("RPC timeout")
+	ErrUnknown             = errors.New("Unknown error")
 	ErrRPCChannelsRequired = errors.New("In order to make RPC calls you need to init receiver and sender")
 )
 
 const (
 	defaultReqX = "request"
-	defaultResX = "request"
+	defaultResX = "response"
 )
 
 type (
 	Config struct {
-		AMQPUrl string
-		Host string
+		AMQPUrl     string
+		Host        string
 		VirtualHost string
-		Port int
-		User string
-		Password string
-		LogLevel uint8
+		Port        int
+		User        string
+		Password    string
+		LogLevel    uint8
 	}
 
 	Session struct {
@@ -49,13 +51,13 @@ type (
 		log *logrus.Logger
 	}
 
-	ConsumerConfig struct{
-		PrefetchCount int
-		PrefetchSize  int
+	ConsumerConfig struct {
+		PrefetchCount  int
+		PrefetchSize   int
 		PrefetchGlobal bool
 	}
 
-	PublisherConfig struct{
+	PublisherConfig struct {
 		// TODO: add publisher config options
 	}
 )
@@ -64,7 +66,7 @@ func NewSession(cfg Config) *Session {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	return &Session{
-		cfg: cfg,
+		cfg:   cfg,
 		close: make(chan bool),
 
 		servers: []*server{},
@@ -76,6 +78,7 @@ func NewSession(cfg Config) *Session {
 			Formatter: &logrus.TextFormatter{
 				FullTimestamp: true,
 			},
+			//Formatter: &logrus.JSONFormatter{},
 		},
 	}
 }
@@ -85,13 +88,13 @@ func (sess *Session) Consumer(consumerCfg ConsumerConfig) (Consumer, error) {
 	if err != nil {
 		return nil, err
 	}
-	rec.Qos(consumerCfg.PrefetchCount,consumerCfg.PrefetchSize,consumerCfg.PrefetchGlobal)
-	
+	rec.Qos(consumerCfg.PrefetchCount, consumerCfg.PrefetchSize, consumerCfg.PrefetchGlobal)
+
 	srv := &server{
-		sess: sess,
-		qs: []*Queue{},
+		sess:  sess,
+		qs:    []*Queue{},
 		close: make(chan bool),
-		rec: rec,
+		rec:   rec,
 	}
 
 	go func() {
@@ -124,14 +127,14 @@ func (sess *Session) Server(cfg ServerConfig) (Server, error) {
 	}
 
 	srv := &server{
-		sess: sess,
+		sess:      sess,
 		responseX: cfg.ResponseX,
-		requestX: cfg.RequestX,
-		qs: []*Queue{},
-		xs: []*Exchange{},
-		close: make(chan bool),
-		sen: sen,
-		rec: rec,
+		requestX:  cfg.RequestX,
+		qs:        []*Queue{},
+		xs:        []*Exchange{},
+		close:     make(chan bool),
+		sen:       sen,
+		rec:       rec,
 	}
 
 	go func() {
@@ -163,7 +166,7 @@ func (sess *Session) Publisher(cfg PublisherConfig) (Publisher, error) {
 
 	clt := &client{
 		sess: sess,
-		sen: sen,
+		sen:  sen,
 	}
 
 	sess.clients = append(sess.clients, clt)
@@ -178,11 +181,6 @@ func (sess *Session) Client(cfg ClientConfig) (Client, error) {
 	}
 	correlationId := correlationId(32)
 
-	responseQ := cfg.ResponseQ
-	if responseQ == "" {
-		responseQ = cfg.ResponseX + "." + hostname + "." + correlationId
-	}
-
 	if cfg.RequestX == "" {
 		cfg.RequestX = defaultReqX
 	}
@@ -191,13 +189,18 @@ func (sess *Session) Client(cfg ClientConfig) (Client, error) {
 		cfg.ResponseX = defaultResX
 	}
 
+	responseQ := cfg.ResponseQ
+	if responseQ == "" {
+		responseQ = cfg.ResponseX + "." + hostname + "." + correlationId
+	}
+
 	clt := &client{
-		sess: sess,
-		responseX: cfg.ResponseX,
-		requestX: cfg.RequestX,
-		responseQ: responseQ,
+		sess:        sess,
+		responseX:   cfg.ResponseX,
+		requestX:    cfg.RequestX,
+		responseQ:   responseQ,
 		rpcChannels: map[string]chan Message{},
-		close: make(chan bool),
+		close:       make(chan bool),
 	}
 
 	sen, err := sess.conn.Channel()
