@@ -12,7 +12,7 @@ import (
 	"errors"
 	"math/rand"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // Errors
