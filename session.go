@@ -88,7 +88,10 @@ func (sess *Session) Consumer(consumerCfg ConsumerConfig) (Consumer, error) {
 	if err != nil {
 		return nil, err
 	}
-	rec.Qos(consumerCfg.PrefetchCount, consumerCfg.PrefetchSize, consumerCfg.PrefetchGlobal)
+	err = rec.Qos(consumerCfg.PrefetchCount, consumerCfg.PrefetchSize, consumerCfg.PrefetchGlobal)
+	if err != nil {
+		return nil, err
+	}
 
 	srv := &server{
 		sess:  sess,

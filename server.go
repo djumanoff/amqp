@@ -241,31 +241,33 @@ func (srv *server) Queue(q Queue) error {
 		}
 
 		go func(ch <-chan amqp.Delivery, binding QueueBinding) {
-			for d := range ch {
-				m := deliveryToMessage(d)
-				srv.sess.log.Debug(" <- ", m)
+			for del := range ch {
+				go func(d *amqp.Delivery) {
+					m := deliveryToMessage(*d)
+					srv.sess.log.Debug(" <- ", m)
 
-				msg := binding.Handler(m)
-				if msg == nil {
-					continue
-				}
+					msg := binding.Handler(m)
+					if msg == nil {
+						return
+					}
 
-				msg.ReplyTo = d.ReplyTo
-				msg.CorrelationId = d.CorrelationId
-				msg.AppId = d.AppId
-				msg.Timestamp = time.Now()
+					msg.ReplyTo = d.ReplyTo
+					msg.CorrelationId = d.CorrelationId
+					msg.AppId = d.AppId
+					msg.Timestamp = time.Now()
 
-				srv.sess.log.Debug(" -> ", msg)
+					srv.sess.log.Debug(" -> ", msg)
 
-				if err := srv.sen.Publish(
-					srv.responseX,
-					msg.ReplyTo,
-					msg.Mandatory,
-					msg.Immediate,
-					msg.publishing(),
-				); err != nil {
-					srv.sess.log.Warn(err)
-				}
+					if err := srv.sen.Publish(
+						srv.responseX,
+						msg.ReplyTo,
+						msg.Mandatory,
+						msg.Immediate,
+						msg.publishing(),
+					); err != nil {
+						srv.sess.log.Warn(err)
+					}
+				}(&del)
 			}
 		}(msgs, b)
 	}
