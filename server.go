@@ -242,8 +242,8 @@ func (srv *server) Queue(q Queue) error {
 
 		go func(ch <-chan amqp.Delivery, binding QueueBinding) {
 			for del := range ch {
-				go func(d *amqp.Delivery) {
-					m := deliveryToMessage(*d)
+				go func(d amqp.Delivery) {
+					m := deliveryToMessage(d)
 					srv.sess.log.Debug(" <- ", m)
 
 					msg := binding.Handler(m)
@@ -267,7 +267,7 @@ func (srv *server) Queue(q Queue) error {
 					); err != nil {
 						srv.sess.log.Warn(err)
 					}
-				}(&del)
+				}(del)
 			}
 		}(msgs, b)
 	}
