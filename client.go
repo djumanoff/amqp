@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/streadway/amqp"
+	"fmt"
+	"sync"
 )
 
 type (
@@ -25,7 +27,7 @@ type (
 	}
 
 	client struct {
-		sess *Session
+		sess *session
 
 		rec *amqp.Channel
 
@@ -36,6 +38,7 @@ type (
 
 		responseQ string
 
+		rpcChannelsMu sync.Mutex
 		rpcChannels map[string]chan Message
 
 		close chan bool
@@ -88,6 +91,7 @@ func (clt *client) run() error {
 					c <- deliveryToMessage(d)
 				}
 			case <-clt.close:
+				fmt.Println("cleanup here?")
 				clt.cleanup()
 			}
 		}
@@ -102,7 +106,7 @@ func (clt *client) stop() {
 
 func (clt *client) Publish(message Message) error {
 	message.Timestamp = time.Now()
-	clt.sess.log.Debug(" -> ", message)
+	//clt.sess.log.Debug(" -> ", message)
 	return clt.sen.Publish(
 		message.Exchange,
 		message.RoutingKey,
@@ -116,7 +120,11 @@ func (clt *client) Call(endpoint string, message Message) (*Message, error) {
 	replyCh := make(chan Message)
 
 	correlationId := correlationId(32)
+
+	clt.rpcChannelsMu.Lock()
 	clt.rpcChannels[correlationId] = replyCh
+	clt.rpcChannelsMu.Unlock()
+
 	defer clt.closeReplyChannel(correlationId)
 
 	message.Exchange = clt.requestX
@@ -134,7 +142,7 @@ func (clt *client) Call(endpoint string, message Message) (*Message, error) {
 
 	select {
 	case reply := <-replyCh:
-		clt.sess.log.Debug(" <- ", reply)
+		//clt.sess.log.Debug(" <- ", reply)
 		return &reply, nil
 	case <-time.After(10 * time.Second):
 		return nil, ErrRpcTimeout
@@ -145,6 +153,9 @@ func (clt *client) Call(endpoint string, message Message) (*Message, error) {
 
 // Some helper methods
 func (clt *client) closeReplyChannel(chName string) {
+	clt.rpcChannelsMu.Lock()
+	defer clt.rpcChannelsMu.Unlock()
+
 	if ch, ok := clt.rpcChannels[chName]; ok {
 		close(ch)
 		delete(clt.rpcChannels, chName)
@@ -164,10 +175,15 @@ func (clt *client) cleanup() error {
 		return err
 	}
 
+	clt.rpcChannelsMu.Lock()
 	for k, ch := range clt.rpcChannels {
 		close(ch)
 		delete(clt.rpcChannels, k)
 	}
+	clt.rpcChannelsMu.Unlock()
 
-	return nil
+	if err := clt.sen.Close(); err != nil {
+		return err
+	}
+	return clt.rec.Close()
 }
