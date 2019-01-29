@@ -28,7 +28,7 @@ type (
 	}
 
 	server struct {
-		sess *Session
+		sess *session
 
 		rec *amqp.Channel
 
@@ -244,7 +244,7 @@ func (srv *server) Queue(q Queue) error {
 			for del := range ch {
 				go func(d amqp.Delivery) {
 					m := deliveryToMessage(d)
-					srv.sess.log.Debug(" <- ", m)
+					//srv.sess.log.Debug(" <- ", m)
 
 					msg := binding.Handler(m)
 					if msg == nil {
@@ -256,7 +256,7 @@ func (srv *server) Queue(q Queue) error {
 					msg.AppId = d.AppId
 					msg.Timestamp = time.Now()
 
-					srv.sess.log.Debug(" -> ", msg)
+					//srv.sess.log.Debug(" -> ", msg)
 
 					if err := srv.sen.Publish(
 						srv.responseX,
@@ -307,10 +307,12 @@ func (srv *server) Endpoint(endpoint string, handler Handler) error {
 }
 
 func (srv *server) cleanup() error {
+	srv.sess.log.Info("started cleanup server rec channels")
 	if err := srv.cleanupRec(); err != nil {
 		return err
 	}
 
+	srv.sess.log.Info("started cleanup server sen channels")
 	if err := srv.cleanupSen(); err != nil {
 		return err
 	}
@@ -319,6 +321,8 @@ func (srv *server) cleanup() error {
 }
 
 func (srv *server) cleanupSen() error {
+	srv.sess.log.Info("cleanupSen")
+
 	for _, x := range srv.xs {
 		for _, b := range x.Bindings {
 			if err := srv.sen.ExchangeUnbind(
@@ -334,10 +338,12 @@ func (srv *server) cleanupSen() error {
 		}
 	}
 
-	return nil
+	return srv.sen.Close()
 }
 
 func (srv *server) cleanupRec() error {
+	srv.sess.log.Info("cleanupRec")
+
 	for _, q := range srv.qs {
 		for _, b := range q.Bindings {
 			if err := srv.rec.QueueUnbind(
@@ -352,5 +358,5 @@ func (srv *server) cleanupRec() error {
 		}
 	}
 
-	return nil
+	return srv.rec.Close()
 }
