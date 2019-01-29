@@ -47,7 +47,7 @@ type rpcChannelsMx struct {
 	mx sync.RWMutex
 	rpcChannelMap  map[string]chan Message
 }
-func (c *rpcChannelsMx) Store(key string, message chan Message)  {
+func (c *rpcChannelsMx) Store(key string, message chan Message) {
 	c.mx.RLock()
 	c.rpcChannelMap[key] = message
 	c.mx.RUnlock()
@@ -156,7 +156,6 @@ func (clt *client) Call(endpoint string, message Message) (*Message, error) {
 	message.ContentType = "application/json"
 	message.Mandatory = false
 	message.Immediate = false
-	message.Timestamp = time.Now()
 
 	if err := clt.Publish(message); err != nil {
 		return nil, err
