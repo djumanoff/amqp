@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/streadway/amqp"
+	"sync"
 )
 
 type (
@@ -36,11 +37,39 @@ type (
 
 		responseQ string
 
-		rpcChannels map[string]chan Message
+		rpcChannels rpcChannelsMx
 
 		close chan bool
 	}
 )
+
+type rpcChannelsMx struct {
+	mx sync.RWMutex
+	rpcChannelMap  map[string]chan Message
+}
+func (c *rpcChannelsMx) Store(key string, message chan Message)  {
+	c.mx.RLock()
+	c.rpcChannelMap[key] = message
+	c.mx.RUnlock()
+}
+func (c *rpcChannelsMx) Delete(key string)  {
+	c.mx.RLock()
+	delete(c.rpcChannelMap, key )
+	c.mx.RUnlock()
+}
+func (c *rpcChannelsMx) Load(key string) (chan Message, bool) {
+	message, ok := c.rpcChannelMap[key]
+	return message, ok
+}
+
+func (c *rpcChannelsMx) RangeCleanUp() {
+	c.mx.RLock()
+	for key, ch := range  c.rpcChannelMap {
+		close(ch)
+		delete(c.rpcChannelMap, key )
+	}
+	c.mx.RUnlock()
+}
 
 func (clt *client) run() error {
 	queue, err := clt.rec.QueueDeclare(
@@ -84,7 +113,7 @@ func (clt *client) run() error {
 		for {
 			select {
 			case d := <-msgs:
-				if c, ok := clt.rpcChannels[d.CorrelationId]; ok {
+				if c, ok := clt.rpcChannels.Load(d.CorrelationId); ok {
 					c <- deliveryToMessage(d)
 				}
 			case <-clt.close:
@@ -116,7 +145,7 @@ func (clt *client) Call(endpoint string, message Message) (*Message, error) {
 	replyCh := make(chan Message)
 
 	correlationId := correlationId(32)
-	clt.rpcChannels[correlationId] = replyCh
+	clt.rpcChannels.Store(correlationId, replyCh)
 	defer clt.closeReplyChannel(correlationId)
 
 	message.Exchange = clt.requestX
@@ -127,6 +156,7 @@ func (clt *client) Call(endpoint string, message Message) (*Message, error) {
 	message.ContentType = "application/json"
 	message.Mandatory = false
 	message.Immediate = false
+	message.Timestamp = time.Now()
 
 	if err := clt.Publish(message); err != nil {
 		return nil, err
@@ -145,9 +175,9 @@ func (clt *client) Call(endpoint string, message Message) (*Message, error) {
 
 // Some helper methods
 func (clt *client) closeReplyChannel(chName string) {
-	if ch, ok := clt.rpcChannels[chName]; ok {
+	if ch, ok := clt.rpcChannels.Load(chName); ok {
 		close(ch)
-		delete(clt.rpcChannels, chName)
+		clt.rpcChannels.Delete(chName)
 	}
 }
 
@@ -164,10 +194,7 @@ func (clt *client) cleanup() error {
 		return err
 	}
 
-	for k, ch := range clt.rpcChannels {
-		close(ch)
-		delete(clt.rpcChannels, k)
-	}
+	clt.rpcChannels.RangeCleanUp()
 
 	return nil
 }

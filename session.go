@@ -202,7 +202,7 @@ func (sess *Session) Client(cfg ClientConfig) (Client, error) {
 		responseX:   cfg.ResponseX,
 		requestX:    cfg.RequestX,
 		responseQ:   responseQ,
-		rpcChannels: map[string]chan Message{},
+		rpcChannels: rpcChannelsMx{rpcChannelMap: map[string]chan Message{}},
 		close:       make(chan bool),
 	}
 
