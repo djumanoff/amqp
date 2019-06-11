@@ -244,7 +244,7 @@ func (srv *server) Queue(q Queue) error {
 			for del := range ch {
 				go func(d amqp.Delivery) {
 					m := deliveryToMessage(d)
-					//srv.sess.log.Debug(" <- ", m)
+					srv.sess.log.Debug(" <- ", m)
 
 					msg := binding.Handler(m)
 					if msg == nil {
@@ -256,7 +256,7 @@ func (srv *server) Queue(q Queue) error {
 					msg.AppId = d.AppId
 					msg.Timestamp = time.Now()
 
-					//srv.sess.log.Debug(" -> ", msg)
+					srv.sess.log.Debug(" -> ", msg)
 
 					if err := srv.sen.Publish(
 						srv.responseX,
