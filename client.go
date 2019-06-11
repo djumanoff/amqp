@@ -106,7 +106,7 @@ func (clt *client) stop() {
 
 func (clt *client) Publish(message Message) error {
 	message.Timestamp = time.Now()
-	//clt.sess.log.Debug(" -> ", message)
+	clt.sess.log.Debug(" -> ", message)
 	return clt.sen.Publish(
 		message.Exchange,
 		message.RoutingKey,
@@ -142,7 +142,7 @@ func (clt *client) Call(endpoint string, message Message) (*Message, error) {
 
 	select {
 	case reply := <-replyCh:
-		//clt.sess.log.Debug(" <- ", reply)
+		clt.sess.log.Debug(" <- ", reply)
 		return &reply, nil
 	case <-time.After(10 * time.Second):
 		return nil, ErrRpcTimeout
