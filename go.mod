@@ -1,4 +1,4 @@
-module github.com/djumanoff/amqp
+module github.com/AliasYermukanov/amqp
 
 require (
 	github.com/sirupsen/logrus v1.1.0
