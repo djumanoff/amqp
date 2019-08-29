@@ -38,7 +38,7 @@ type (
 
 		responseQ string
 
-		rpcChannelsMu sync.Mutex
+		rpcChannelsMu sync.RWMutex
 		rpcChannels map[string]chan Message
 
 		close chan bool
@@ -87,9 +87,11 @@ func (clt *client) run() error {
 		for {
 			select {
 			case d := <-msgs:
+				clt.rpcChannelsMu.RLock()
 				if c, ok := clt.rpcChannels[d.CorrelationId]; ok {
 					c <- deliveryToMessage(d)
 				}
+				clt.rpcChannelsMu.RUnlock()
 			case <-clt.close:
 				fmt.Println("cleanup here?")
 				clt.cleanup()
