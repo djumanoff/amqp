@@ -9,7 +9,7 @@ AMQP binding implementing Client-Server and Publisher-Consumer paradigms
     
     import (
         "fmt"
-        "github.com/djumanoff/amqp"
+        "github.com/AliasYermukanov/amqp"
     )
     
     var cfg = amqp.Config{
@@ -66,7 +66,7 @@ AMQP binding implementing Client-Server and Publisher-Consumer paradigms
         
     import (
     	"fmt"
-    	"github.com/djumanoff/amqp"
+    	"github.com/AliasYermukanov/amqp"
     )
     
     var cfg = amqp.Config{
