@@ -89,7 +89,7 @@ func (srv *server) Start() error {
 	//}
 
 	<-srv.close
-	srv.cleanup(srv.unbindQsAtStop, srv.unbindExAtStop)
+	srv.cleanup()
 
 	return nil
 }
@@ -310,15 +310,15 @@ func (srv *server) Endpoint(endpoint string, handler Handler) error {
 	return nil
 }
 
-func (srv *server) cleanup(unbindQs, unbindEx bool) error {
-	if unbindQs {
+func (srv *server) cleanup() error {
+	if srv.unbindQsAtStop {
 		srv.sess.log.Info("started cleanup server rec channels")
 		if err := srv.cleanupRec(); err != nil {
 			return err
 		}
 	}
 
-	if unbindEx {
+	if srv.unbindExAtStop {
 		srv.sess.log.Info("started cleanup server sen channels")
 		if err := srv.cleanupSen(); err != nil {
 			return err
