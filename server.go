@@ -25,6 +25,8 @@ type (
 	ServerConfig struct {
 		RequestX  string
 		ResponseX string
+		UnbindQsAtStop bool
+		UnbindExAtStop bool
 	}
 
 	server struct {
@@ -36,6 +38,8 @@ type (
 
 		requestX  string
 		responseX string
+		unbindQsAtStop bool
+		unbindExAtStop bool
 
 		qs []*Queue
 		xs []*Exchange
@@ -307,14 +311,18 @@ func (srv *server) Endpoint(endpoint string, handler Handler) error {
 }
 
 func (srv *server) cleanup() error {
-	srv.sess.log.Info("started cleanup server rec channels")
-	if err := srv.cleanupRec(); err != nil {
-		return err
+	if srv.unbindQsAtStop {
+		srv.sess.log.Info("started cleanup server rec channels")
+		if err := srv.cleanupRec(); err != nil {
+			return err
+		}
 	}
 
-	srv.sess.log.Info("started cleanup server sen channels")
-	if err := srv.cleanupSen(); err != nil {
-		return err
+	if srv.unbindExAtStop {
+		srv.sess.log.Info("started cleanup server sen channels")
+		if err := srv.cleanupSen(); err != nil {
+			return err
+		}
 	}
 
 	return nil
