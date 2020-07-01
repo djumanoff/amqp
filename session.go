@@ -154,6 +154,8 @@ func (sess *session) createServer(cfg ServerConfig) (*server, error) {
 		close:     make(chan bool),
 		sen:       sen,
 		rec:       rec,
+		unbindExAtStop: cfg.UnbindExAtStop,
+		unbindQsAtStop: cfg.UnbindQsAtStop,
 	}
 
 	senCh := sen.NotifyClose(make(chan *amqp.Error))
