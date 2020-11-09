@@ -53,6 +53,10 @@ type (
 	Interceptor func(*Message) *Message
 )
 
+func (m Message) Error() string {
+	return string(m.Body)
+}
+
 func (m Message) String() string {
 	//m.BodyString = string(m.Body)
 	//m.Body = nil
